@@ -50,6 +50,7 @@ function calc(k,e){const l=line(k,e),d=dim(k),er={};
   const gross=basic+e.allow+e.petrol+ls+eos;
   if(!num(l.ded))er.ded='≥ 0, 2 decimals';else if(l.ded>gross)er.ded='Exceeds gross';else if(l.ded>0&&!l.reason.trim())er.reason='Reason required';
   const net=gross-(er.ded?0:+l.ded||0);return{l,basic,ls,eos,net,er}}
+const ADMIN_HASH='11ebb23f89b275c95c8763dc6ec0f397b6b8e27f2543e8b7f9fd4f855aaf2aa7';
 const ROLES={admin:'Admin',accounts:'Accounts',checker:'Checker',manager:'Manager',employee:'Employee'};
 const FLOW=['draft','checked','approved','paid'],STEPROLE={checked:['checker','admin'],approved:['manager','admin'],paid:['accounts','admin']};
 /* ---------- tickets ---------- */
@@ -74,10 +75,12 @@ const navFor=()=>S.user.role==='employee'?[['slip','🧾'],['tix','🎫']]:NAV;
 function applyUI(){document.documentElement.dataset.theme=S.ui.theme;document.documentElement.lang=L();document.documentElement.dir=L()==='ar'?'rtl':'ltr'}
 function login(){applyUI();$('#app').innerHTML=`<div class="login"><div class="card in"><div class="lock">🔒</div><h2 style="margin:8px 0">Al Hosn Engineering Consultants</h2><p class="mut">Abu Dhabi Branch — Staff Payments</p>
 <label>${t('login')}</label><select id="role">${Object.entries(ROLES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
-<div id="empsel" hidden><label>${t('emp')}</label><select id="who">${S.emps.map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('')}</select></div>
+<div id="pwsel"><label>Password</label><input type="password" id="pw" autocomplete="current-password"></div><div id="empsel" hidden><label>${t('emp')}</label><select id="who">${S.emps.map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('')}</select></div>
 <p style="margin-top:16px"><button class="btn" id="go">${t('enter')}</button></p><p class="mut" style="font-size:12px;margin-top:12px">Demo build — data is stored in this browser only.</p></div></div>`;
- $('#role').onchange=e=>$('#empsel').hidden=e.target.value!=='employee';
- $('#go').onclick=()=>{const r=$('#role').value;S.user={role:r,name:r==='checker'?'Amna AlKaabi':r==='employee'?S.emps.find(e=>e.id==$('#who').value).name:ROLES[r],emp:r==='employee'?+$('#who').value:null};save();boot()}}
+ const sync=()=>{const r=$('#role').value;$('#empsel').hidden=r!=='employee';$('#pwsel').hidden=r!=='admin'};$('#role').onchange=sync;sync();
+ $('#go').onclick=async()=>{const r=$('#role').value;
+  if(r==='admin'){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode($('#pw').value)),x=[...new Uint8Array(b)].map(c=>c.toString(16).padStart(2,'0')).join('');if(x!==ADMIN_HASH){fclear($('#pwsel'));return ferr($('#pw'),'Wrong password')}}
+  S.user={role:r,name:r==='checker'?'Amna AlKaabi':r==='employee'?S.emps.find(e=>e.id==$('#who').value).name:ROLES[r],emp:r==='employee'?+$('#who').value:null};save();boot()}}
 function boot(){if(!S.user)return login();applyUI();
  const items=navFor();
  $('#app').innerHTML=`<div class="shell"><aside class="side glass"><h1>AL HOSN<small>Staff Payments</small></h1><div id="sn">${items.map(([k,i])=>`<button class="nav" data-k="${k}"><span>${i} ${t(k)}</span></button>`).join('')}</div><div style="flex:1"></div><div class="mut" style="padding:0 10px;font-size:12px">${esc(S.user.name)}</div><button class="nav" id="so"><span>${t('signout')}</span></button></aside>
